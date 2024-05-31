@@ -1808,7 +1808,7 @@ class Trainer:
 
         return model
 
-    def train(
+    def train(  # Trainer(init with model)的训练逻辑
         self,
         resume_from_checkpoint: Optional[Union[str, bool]] = None,
         trial: Union["optuna.Trial", Dict[str, Any]] = None,
