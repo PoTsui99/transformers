@@ -445,6 +445,18 @@ class ModelUtilsTest(TestCasePlus):
         with self.assertRaises(ValueError):
             model = AutoModel.from_config(config, torch_dtype=torch.int64)
 
+    def test_model_from_config_torch_dtype_str(self):
+        # test that from_pretrained works with torch_dtype being strings like "float32" for PyTorch backend
+        model = AutoModel.from_pretrained(TINY_T5, torch_dtype="float32")
+        self.assertEqual(model.dtype, torch.float32)
+
+        model = AutoModel.from_pretrained(TINY_T5, torch_dtype="float16")
+        self.assertEqual(model.dtype, torch.float16)
+
+        # torch.set_default_dtype() supports only float dtypes, so will fail with non-float type
+        with self.assertRaises(ValueError):
+            model = AutoModel.from_pretrained(TINY_T5, torch_dtype="int64")
+
     def test_model_from_pretrained_torch_dtype(self):
         # test that the model can be instantiated with dtype of either
         # 1. explicit from_pretrained's torch_dtype argument
@@ -669,7 +681,7 @@ class ModelUtilsTest(TestCasePlus):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # We use the same folder for various sizes to make sure a new save erases the old checkpoint.
-            for max_size in ["50kB", "50kiB", "100kB", "100kiB", "200kB", "200kiB"]:
+            for max_size in ["50kB", "100kB", "200kB"]:
                 model.save_pretrained(tmp_dir, max_shard_size=max_size, safe_serialization=False)
 
                 # Get each shard file and its size
@@ -686,10 +698,7 @@ class ModelUtilsTest(TestCasePlus):
 
                 # Check a file is bigger than max_size only when it has a single weight
                 for shard_file, size in shard_to_size.items():
-                    if max_size.endswith("kiB"):
-                        max_size_int = int(max_size[:-3]) * 2**10
-                    else:
-                        max_size_int = int(max_size[:-2]) * 10**3
+                    max_size_int = int(max_size[:-2]) * 10**3
                     # Note: pickle adds some junk so the weight of the file can end up being slightly bigger than
                     # the size asked for (since we count parameters)
                     if size >= max_size_int + 50000:
@@ -1357,7 +1366,7 @@ class ModelUtilsTest(TestCasePlus):
             self.assertIn("You may ignore this warning if your `pad_token_id`", cl.out)
 
         if not is_torchdynamo_available():
-            return
+            self.skipTest(reason="torchdynamo is not available")
         with self.subTest("Ensure that the warning code is skipped when compiling with torchdynamo."):
             logger.warning_once.cache_clear()
             from torch._dynamo import config, testing
@@ -1634,7 +1643,7 @@ class ModelOnTheFlyConversionTester(unittest.TestCase):
             self.assertEqual(discussion.author, "SFconvertbot")
             self.assertEqual(discussion.title, "Adding `safetensors` variant of this model")
 
-    @unittest.skip("Edge case, should work once the Space is updated`")
+    @unittest.skip(reason="Edge case, should work once the Space is updated`")
     def test_safetensors_on_the_fly_wrong_user_opened_pr(self):
         config = BertConfig(
             vocab_size=99, hidden_size=32, num_hidden_layers=5, num_attention_heads=4, intermediate_size=37
@@ -1763,7 +1772,7 @@ class ModelPushToHubTester(unittest.TestCase):
         except HTTPError:
             pass
 
-    @unittest.skip("This test is flaky")
+    @unittest.skip(reason="This test is flaky")
     def test_push_to_hub(self):
         config = BertConfig(
             vocab_size=99, hidden_size=32, num_hidden_layers=5, num_attention_heads=4, intermediate_size=37
@@ -1803,7 +1812,7 @@ The commit description supports markdown synthax see:
         )
         self.assertEqual(commit_details.commit_description, COMMIT_DESCRIPTION)
 
-    @unittest.skip("This test is flaky")
+    @unittest.skip(reason="This test is flaky")
     def test_push_to_hub_in_organization(self):
         config = BertConfig(
             vocab_size=99, hidden_size=32, num_hidden_layers=5, num_attention_heads=4, intermediate_size=37
@@ -2200,7 +2209,7 @@ class TestAttentionImplementation(unittest.TestCase):
 
     def test_not_available_flash(self):
         if is_flash_attn_2_available():
-            self.skipTest("Please uninstall flash-attn package to run test_not_available_flash")
+            self.skipTest(reason="Please uninstall flash-attn package to run test_not_available_flash")
 
         with self.assertRaises(ImportError) as cm:
             _ = AutoModel.from_pretrained(
@@ -2211,7 +2220,7 @@ class TestAttentionImplementation(unittest.TestCase):
 
     def test_not_available_flash_with_config(self):
         if is_flash_attn_2_available():
-            self.skipTest("Please uninstall flash-attn package to run test_not_available_flash")
+            self.skipTest(reason="Please uninstall flash-attn package to run test_not_available_flash")
 
         config = AutoConfig.from_pretrained("hf-internal-testing/tiny-random-GPTBigCodeModel")
 
@@ -2226,7 +2235,7 @@ class TestAttentionImplementation(unittest.TestCase):
 
     def test_not_available_sdpa(self):
         if is_torch_sdpa_available():
-            self.skipTest("This test requires torch<=2.0")
+            self.skipTest(reason="This test requires torch<=2.0")
 
         with self.assertRaises(ImportError) as cm:
             _ = AutoModel.from_pretrained(
